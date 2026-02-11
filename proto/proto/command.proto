@@ -1,0 +1,39 @@
+syntax = "proto3";
+
+package command;
+
+message Command {
+  oneof command {
+    ConnectCommand connect = 1;
+    DisconnectCommand disconnect = 2;
+  }
+}
+
+message ConnectCommand {}
+message DisconnectCommand {}
+
+message Response {
+  oneof response {
+    ConnectedResponse connected = 1;
+    DisconnectedResponse disconnected = 2;
+    FailedResponse failed = 3;
+  }
+}
+
+message ConnectedResponse {}
+message DisconnectedResponse {}
+
+message FailedResponse {
+  CommandError error = 1;
+}
+
+message CommandError {
+  oneof error {
+    string connect_failed = 1;
+    string disconnect_failed = 2;
+  }
+}
+
+service CommandService {
+  rpc SendCommand(Command) returns (Response);
+}
