@@ -1,16 +1,13 @@
-use kameo::prelude::*;
 use proto::command_service_server::{CommandService, CommandServiceServer};
-use proto::{
-    Command, ConnectedResponse, Response, command::Command as CommandType,
-    response::Response as ResponsePackage,
-};
+use proto::{Command, Response};
 use tonic::transport::Server;
 use tonic::{Request, Response as TonicResponse, Status};
 use tonic_reflection::server::Builder;
 
-use crate::actor::{Connect, ConnectCommand, Controller, DeviceActor};
+use crate::actor::Controller;
 
 mod actor;
+mod domain;
 
 //#[derive(Clone)]
 pub struct CommandServiceImpl {
@@ -33,22 +30,20 @@ impl CommandService for CommandServiceImpl {
     ) -> Result<TonicResponse<Response>, Status> {
         let request = request.into_inner();
 
-        match request.command.unwrap() {
-            CommandType::Connect(_) => {
-                println!("Connect command received");
-                match self.controller.send_command(ConnectCommand {}).await {
-                    Ok(s) => println!("{}", s),
-                    Err(e) => println!("{:?}", e),
-                }
+        println!("Command received");
+
+        let command: domain::Command = request.command.unwrap().into();
+
+        match self.controller.send_command(command).await {
+            Ok(r) => {
+                println!("{:?}", r);
+                Ok(TonicResponse::new(r.into()))
             }
-            CommandType::Disconnect(_) => {
-                println!("Disconnect command received");
+            Err(e) => {
+                println!("{:?}", e);
+                Ok(TonicResponse::new(e.into()))
             }
         }
-
-        Ok(TonicResponse::new(Response {
-            response: Option::from(ResponsePackage::Connected(ConnectedResponse {})),
-        }))
     }
 }
 

@@ -1,3 +1,4 @@
+use crate::domain;
 use std::time::Duration;
 
 use kameo::prelude::*;
@@ -6,22 +7,21 @@ use tokio::sync::mpsc::UnboundedSender;
 #[derive(Actor)]
 pub struct DeviceActor;
 
-pub struct ConnectCommand;
-
-pub struct Connect {
-    tx: UnboundedSender<String>,
-    command: ConnectCommand,
+pub struct Command {
+    tx: UnboundedSender<Result<domain::Response, domain::Error>>,
+    command: domain::Command,
 }
 
-impl Message<Connect> for DeviceActor {
-    type Reply = Result<(), String>;
+impl Message<Command> for DeviceActor {
+    type Reply = Result<(), domain::Error>;
 
-    async fn handle(&mut self, msg: Connect, _: &mut Context<Self, Self::Reply>) -> Self::Reply {
+    async fn handle(&mut self, msg: Command, _: &mut Context<Self, Self::Reply>) -> Self::Reply {
         println!("Handling...");
 
         tokio::spawn(async move {
             tokio::time::sleep(Duration::from_secs(20)).await;
-            msg.tx.send("Connected".to_string());
+            // TODO: temporarily ignored
+            _ = msg.tx.send(Ok(domain::Response::Connected {}));
         });
 
         println!("Queued");
@@ -41,14 +41,16 @@ impl Controller {
         }
     }
 
-    pub async fn send_command(&self, command: ConnectCommand) -> Result<String, String> {
-        let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel::<String>();
+    pub async fn send_command(
+        &self,
+        command: domain::Command,
+    ) -> Result<domain::Response, domain::Error> {
+        let (tx, mut rx) =
+            tokio::sync::mpsc::unbounded_channel::<Result<domain::Response, domain::Error>>();
 
-        self.device_actor
-            .ask(Connect { tx, command })
-            .await
-            .map_err(|e| e.to_string())?;
+        // TODO: temporarily ignored
+        _ = self.device_actor.ask(Command { tx, command }).await;
 
-        rx.recv().await.ok_or("Failed".to_string())
+        rx.recv().await.unwrap()
     }
 }
