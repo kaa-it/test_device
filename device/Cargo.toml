@@ -7,3 +7,5 @@ edition = "2024"
 proto = { path = "../proto" }
 tonic = { workspace = true }
 tokio = { workspace = true }
+tonic-reflection = { workspace = true }
+kameo = { workspace = true }
